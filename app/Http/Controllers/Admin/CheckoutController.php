@@ -10,23 +10,26 @@ use App\Models\Beneficiary;
 use App\Models\Plan;
 use App\Models\Invoice;
 use Illuminate\Support\Facades\Auth;
-// serviços
-use App\Services\BeneficiaryService;
-use App\Services\BeneficiaryPlanService;
-use App\Services\AsaasCustomerService;
-use App\Services\AsaasPaymentService;
-use App\Services\InvoiceService;
-use App\Services\InvoiceHistoryService;
 use Illuminate\Support\Facades\DB;
 
+// Interface e Serviços
+use App\Contracts\PaymentGatewayInterface;
+use App\Services\BeneficiaryService;
+use App\Services\BeneficiaryPlanService;
+use App\Services\InvoiceService;
+use App\Services\InvoiceHistoryService;
 
 class CheckoutController extends Controller
 {
+    protected $gateway;
+    protected $uuid;
 
-    public function __construct(Type $var = null)
+    public function __construct(PaymentGatewayInterface $gateway)
     {
+        $this->gateway = $gateway;
         $this->uuid = env('ELO_UUID');
     }
+
     /**
      * landing page inicial antes de mandar para o checkout
      */
@@ -63,7 +66,7 @@ class CheckoutController extends Controller
     public function checkoutProcess(Request $request)
     {
         // 🔒 REGRA DE NEGÓCIO — SOMENTE ELO
-        if ($request->payment_type === 'CREDIT_CARD') {
+        if ($request->payment_type === 'CREDIT_CARD' || $request->payment_type === 'DEBIT_CARD') {
             if (! $this->isCartaoElo($request->card_number)) {
                 return back()
                     ->withErrors('Aceitamos apenas cartões da bandeira ELO.')
@@ -73,7 +76,7 @@ class CheckoutController extends Controller
             }
         }
         try {
-            // 1. cria beneficiário e customer do Asaas
+            // 1. cria beneficiário e gerencia customer no Gateway via Interface
             $beneficiary = app(BeneficiaryService::class)
                 ->createBeneficiary($request, $request->company_uuid);
 
@@ -81,15 +84,15 @@ class CheckoutController extends Controller
             $beneficiaryPlan = app(BeneficiaryPlanService::class)
                 ->createBeneficiaryPlan($beneficiary, $request->plan_uuid);
 
-            // 3. cria pagamento no ASAAS (boleto/pix/cartão)
-            if ($request->payment_type === 'CREDIT_CARD') {
+            // 3. cria pagamento no Gateway (boleto/pix/cartão) via Interface
+            if ($request->payment_type === 'CREDIT_CARD' || $request->payment_type === 'DEBIT_CARD') {
 
-                $asaas = app(AsaasPaymentService::class);
+                $plan = Plan::where('uuid', $request->plan_uuid)->first();
 
-                $payment = $asaas->createSubscription(
-                    customer: $beneficiary->asaas_customer_id,
-                    value: Plan::where('uuid', $request->plan_uuid)->first()->value,
-                    description: "Assinatura de Plano na BoxFarma: " . Plan::where('uuid', $request->plan_uuid)->first()->name,
+                $payment = $this->gateway->createSubscription(
+                    customerGatewayId: $beneficiary->asaas_customer_id,
+                    value: $plan->value,
+                    description: "Assinatura de Plano na BoxFarma: " . $plan->name,
                     creditCard: [
                         'holderName' => $request->card_holder,
                         'number' => $request->card_number,
@@ -111,8 +114,7 @@ class CheckoutController extends Controller
 
             } else {
                 // boleto ou pix
-                $payment = app(AsaasPaymentService::class)
-                    ->createPayment($beneficiary, $request->plan_uuid, $request->payment_type);
+                $payment = $this->gateway->createPayment($beneficiary, $request->plan_uuid, $request->payment_type);
             }
 
             // 4. cria invoice local com payment_id
@@ -130,8 +132,6 @@ class CheckoutController extends Controller
                 ->with('step', 2); // volta pro step 2 ou 3 conforme erro
         }
     }
-
-
 
 
     public function checkoutConfirmation($invoiceUuid)
@@ -167,11 +167,11 @@ class CheckoutController extends Controller
             }
         });
 
+        // 🔄 Regenera a sessão antes de logar (segurança)
+        session()->regenerate();
+
         // 🔐 Autentica automaticamente o beneficiário
         Auth::guard('beneficiary')->login($invoice->beneficiary);
-
-        // 🔄 Regenera a sessão (segurança)
-        session()->regenerate();
 
         return view('pages.checkout.confirmation', compact('invoice'));
     }

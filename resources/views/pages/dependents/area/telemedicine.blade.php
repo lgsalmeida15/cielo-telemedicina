@@ -134,6 +134,10 @@
                             <input type="hidden" name="especialidade" value="1">
                             <!-- Seleção de Horários Disponíveis -->
                             <label class="form-label mt-3">Horário Disponível</label>
+                            <script>
+                                console.log("Especialidade selecionada: {{ $specialtyId == 2 ? 'Pediatria' : 'Clínico Geral' }} (ID: {{ $specialtyId }})");
+                                console.log("Idade do dependente: {{ \Carbon\Carbon::parse($dependent->birth_date)->age }} anos");
+                            </script>
                             <select name="hour" class="form-control" required>
                                 @php
                                     use Carbon\Carbon;

@@ -3,17 +3,24 @@
 
 namespace App\Services;
 
+use App\Contracts\PaymentGatewayInterface;
 use App\Models\Beneficiary;
 use Illuminate\Http\Request;
-use App\Services\AsaasCustomerService;
 use App\Models\Company;
 use Illuminate\Support\Facades\Hash;
 
 class BeneficiaryService
 {
+    protected $gateway;
+
+    public function __construct(PaymentGatewayInterface $gateway)
+    {
+        $this->gateway = $gateway;
+    }
+
     /**
      * Cria um novo beneficiario;
-     * usa service do assas customer para criar o customer id do asaas
+     * usa a interface de gateway para gerenciar o customer
      */
     public function createBeneficiary($request, $companyUuid)
     {
@@ -51,14 +58,16 @@ class BeneficiaryService
 
             if ($existing) {
 
-                // 🔄 Se existir mas ainda não tiver customer no Asaas — cria agora
+                // 🔄 Se existir mas ainda não tiver customer no gateway — tenta criar agora
                 if (!$existing->asaas_customer_id) {
-                    $customerId = app(AsaasCustomerService::class)
-                        ->createCustomerForBeneficiary($existing);
+                    $customerId = $this->gateway->createCustomer($existing);
 
-                    $existing->update([
-                        'asaas_customer_id' => $customerId
-                    ]);
+                    if ($customerId) {
+                        $existing->update([
+                            'asaas_customer_id' => $customerId,
+                            'payment_gateway' => config('services.payment_gateway.driver', 'asaas')
+                        ]);
+                    }
                 }
 
                 return $existing; // retorna o beneficiário existente
@@ -76,16 +85,18 @@ class BeneficiaryService
                 'gender' => $data['gender'],
                 'relationship' => 'Titular',
                 'mother_name' => $data['mother_name'],
-                'password' => Hash::make($data['password'])
+                'password' => Hash::make($data['password']),
+                'payment_gateway' => config('services.payment_gateway.driver', 'asaas')
             ]);
 
-            // 🔗 3. CRIA customer no Asaas
-            $customerId = app(AsaasCustomerService::class)
-                ->createCustomerForBeneficiary($beneficiary);
+            // 🔗 3. CRIA customer no Gateway (se o gateway exigir)
+            $customerId = $this->gateway->createCustomer($beneficiary);
 
-            $beneficiary->update([
-                'asaas_customer_id' => $customerId
-            ]);
+            if ($customerId) {
+                $beneficiary->update([
+                    'asaas_customer_id' => $customerId
+                ]);
+            }
 
             return $beneficiary;
 

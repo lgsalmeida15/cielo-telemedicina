@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
+use App\Contracts\PaymentGatewayInterface;
 use App\Models\Beneficiary;
-use App\Services\Asaas\AsaasService;
 use App\Services\BrevoMailService;
 use Carbon\Carbon;
 use DB;
@@ -11,6 +11,13 @@ use Exception;
 
 class SubscriptionCancellationService
 {
+    protected $gateway;
+
+    public function __construct(PaymentGatewayInterface $gateway)
+    {
+        $this->gateway = $gateway;
+    }
+
     public function requestCancellation(Beneficiary $beneficiary)
     {
         // 🔍 Plano ativo (local)
@@ -29,7 +36,10 @@ class SubscriptionCancellationService
             ->orderByDesc('created_at')
             ->first();
 
-        $asaas = app(AsaasService::class);
+        if (!$subscriptionInvoice) {
+             throw new Exception('Assinatura não encontrada para este beneficiário.');
+        }
+
         $subscriptionId = $subscriptionInvoice->asaas_payment_id;
         
         // 🔍 Última invoice paga (pay_...)
@@ -45,14 +55,12 @@ class SubscriptionCancellationService
                 ->addMonth()
                 ->subDay()
                 ->toDateString();
-        }else {
+        } else {
             $endDate = Carbon::parse(now())->toDateString();
         }
 
         // Logo base64
         $logo = asset('material/img/logo.png');
-        // $logo = file_get_contents($logo);
-        // $logo = 'data:image/png;base64,' . base64_encode($logo);
 
         // HTML do email
         $html = view('emails.cancelService', [
@@ -65,36 +73,10 @@ class SubscriptionCancellationService
             'Plano cancelado',
             $html
         );
-        // if (!$subscriptionInvoice) {
-        //     // throw new Exception('Nenhum pagamento confirmado encontrado.');
-        //     DB::transaction(function () use ($asaas, $subscriptionId, $plan, $endDate) {
-        //         // ❌ Cancela assinatura no Asaas
-        //         $asaas->cancelSubscription($subscriptionId);
 
-        //         // 📅 Mantém acesso até o fim do ciclo
-        //         $plan->update([
-        //             'end_date' => $endDate
-        //         ]);
-        //     });
-        // }
-
-        // if (!$lastPaidInvoice) {
-        //     // throw new Exception('Nenhum pagamento confirmado encontrado.');
-        //     DB::transaction(function () use ($asaas, $subscriptionId, $plan, $endDate) {
-        //         // ❌ Cancela assinatura no Asaas
-        //         $asaas->cancelSubscription($subscriptionId);
-
-        //         // 📅 Mantém acesso até o fim do ciclo
-        //         $plan->update([
-        //             'end_date' => $endDate
-        //         ]);
-        //     });
-        // }
-
-        DB::transaction(function () use ($asaas, $subscriptionId, $plan, $endDate) {
-
-            // ❌ Cancela assinatura no Asaas
-            $asaas->cancelSubscription($subscriptionId);
+        DB::transaction(function () use ($subscriptionId, $plan, $endDate) {
+            // ❌ Cancela assinatura no Gateway
+            $this->gateway->cancelSubscription($subscriptionId);
 
             // 📅 Mantém acesso até o fim do ciclo
             $plan->update([

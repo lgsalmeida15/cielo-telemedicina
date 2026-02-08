@@ -18,16 +18,21 @@ class InvoiceService
             // Mapeamento dos campos dependendo do tipo
             if ($isSubscription) {
                 // ASSINATURA (CREDIT_CARD)
-                $asaasId   = $payment['id'];
-                $value     = $payment['value'];
+                $asaasId   = $payment['id'] ?? null;
+                $value     = $payment['value'] ?? 0;
                 $status    = $payment['status'] ?? 'PENDING';
-                $dueDate   = $payment['nextDueDate'];  // assinatura usa nextDueDate
+                $dueDate   = $payment['nextDueDate'] ?? now()->format('Y-m-d');  // assinatura usa nextDueDate
             } else {
                 // PAGAMENTO (PIX/BOLETO)
-                $asaasId   = $payment['id'];
-                $value     = $payment['value'];
-                $status    = $payment['status'];
-                $dueDate   = $payment['dueDate']; // pagamento usa dueDate
+                $asaasId   = $payment['id'] ?? null;
+                $value     = $payment['value'] ?? 0;
+                $status    = $payment['status'] ?? 'PENDING';
+                $dueDate   = $payment['dueDate'] ?? now()->format('Y-m-d'); // pagamento usa dueDate
+            }
+
+            // Fallback de valor caso o gateway não retorne
+            if ($value <= 0 && isset($beneficiaryPlan->plan->value)) {
+                $value = $beneficiaryPlan->plan->value;
             }
 
             // Cria invoice
@@ -35,6 +40,7 @@ class InvoiceService
                 'beneficiary_plan_id' => $beneficiaryPlan->id,
                 'beneficiary_id'      => $beneficiary->id,
                 'asaas_payment_id'    => $asaasId,
+                'payment_gateway'     => config('services.payment_gateway.driver', 'asaas'),
                 'competence_month'    => now()->format('m'),
                 'competence_year'     => now()->format('Y'),
                 'invoice_value'       => $value,

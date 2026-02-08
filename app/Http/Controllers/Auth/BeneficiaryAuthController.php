@@ -30,9 +30,11 @@ class BeneficiaryAuthController extends Controller
 
         if (Auth::guard('beneficiary')->attempt($credentials)) {
             $request->session()->regenerate();
+            \Log::info("Beneficiário logado com sucesso: " . $credentials['email']);
             return redirect()->route('beneficiary.area.index'); // redireciona para index
         }
 
+        \Log::error("Falha na tentativa de login para o email: " . $credentials['email']);
         return back()->withErrors([
             'email' => 'As credenciais informadas estão incorretas.',
         ]);

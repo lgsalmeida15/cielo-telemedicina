@@ -118,6 +118,9 @@ Route::get('/{uuid}/checkout', 'Admin\CheckoutController@checkout')->name('check
 Route::post('/checkout/process', 'Admin\CheckoutController@checkoutProcess')->name('checkout.process'); // processa o checkout
 Route::get('/checkout/confirmation/{invoiceUuid}', 'Admin\CheckoutController@checkoutConfirmation')->name('checkout.confirmation'); // page de confirmação
 
+// Rota para obter Access Token Cielo 3DS
+Route::get('/cielo/3ds/token', 'Admin\Cielo3DSController@getAccessToken')->name('cielo.3ds.token');
+
 
 Route::group(['prefix' => 'plans', 'middleware' => 'auth', 'namespace' => 'Admin'], function(){
     Route::post('{beneficiary}/store', 'BeneficiaryPlanController@store')->name('beneficiary.plan.store');

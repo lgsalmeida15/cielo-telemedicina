@@ -25,7 +25,8 @@ class Beneficiary extends Authenticatable implements Transformable
         'relationship',
         'mother_name',
         'inclusion_date',
-        'exclusion_date'
+        'exclusion_date',
+        'payment_gateway'
     ];
 
     protected $hidden = ['password'];
@@ -53,10 +54,16 @@ class Beneficiary extends Authenticatable implements Transformable
 
     public function isInadimplente(): bool
     {
-        return $this->invoices()
+        $inadimplente = $this->invoices()
             ->whereDate('due_date', '<', now())
             ->whereIn('status', ['PENDING', 'OVERDUE', 'AWAITING_PAYMENT'])
             ->exists();
+
+        if ($inadimplente) {
+            \Log::warning("Beneficiário ID {$this->id} bloqueado por inadimplência.");
+        }
+
+        return $inadimplente;
     }
 
     /**

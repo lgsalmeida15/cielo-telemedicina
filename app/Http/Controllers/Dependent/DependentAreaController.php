@@ -113,6 +113,11 @@ class DependentAreaController
         $cpfDependent = preg_replace('/\D/', '', $dependent->cpf);
         $date = now()->format('Y-m-d');
 
+        // Lógica de Especialidade por Idade: < 12 anos = Pediatra (2), >= 12 anos = Clínico Geral (1)
+        $birthDate = \Carbon\Carbon::parse($dependent->birth_date);
+        $age = $birthDate->age;
+        $specialtyId = ($age < 12) ? 2 : 1;
+
         $availableHours = [];
 
         try {
@@ -137,7 +142,7 @@ class DependentAreaController
 
                 $response = $ibam->medcareAvailableHours(
                     $docwayPatientId,
-                    1, // Clínico Geral
+                    $specialtyId, // Clínico Geral ou Pediatra
                     $date
                 );
 
@@ -151,7 +156,7 @@ class DependentAreaController
 
         return view('pages.dependents.area.telemedicine', [
             'dependent' => $dependent,
-            'specialtyId' => 1,
+            'specialtyId' => $specialtyId,
             'date' => $date,
             'availableHours' => $availableHours
         ]);
@@ -187,15 +192,13 @@ class DependentAreaController
 
         $docwayPatientId = $exists['response']['data']['docway_patient_id'];
 
-        // dd($docwayPatientId, [
-        //     "specialty_id" => 1,
-        //     "date_time" => $dateTime,
-        //     "docway_dependent_id" => $dependent->docway_dependent_id
-        // ]);
+        // Calcula especialidade por idade: < 12 anos = Pediatra (2), >= 12 anos = Clínico Geral (1)
+        $age = \Carbon\Carbon::parse($dependent->birth_date)->age;
+        $specialtyId = ($age < 12) ? 2 : 1;
 
         // inicia atendimento PARA DEPENDENTE
         $medcare = $ibam->medcareCreate($docwayPatientId, [
-            "specialty_id" => 1,
+            "specialty_id" => $specialtyId,
             "date_time" => $dateTime,
             "docway_dependent_id" => $dependent->docway_dependent_id
         ]);

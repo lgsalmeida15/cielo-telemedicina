@@ -11,10 +11,12 @@ class PreventMultiGuard
     {
         // Admin + Beneficiário
         if (Auth::guard('web')->check() && Auth::guard('beneficiary')->check()) {
+            \Log::warning("PreventMultiGuard: Admin logado, deslogando Beneficiário.");
             Auth::guard('beneficiary')->logout();
         }
 
         if (Auth::guard('beneficiary')->check() && Auth::guard('web')->check()) {
+            \Log::warning("PreventMultiGuard: Beneficiário logado, deslogando Admin.");
             Auth::guard('web')->logout();
         }
 

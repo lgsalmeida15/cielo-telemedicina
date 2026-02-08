@@ -34,9 +34,23 @@ return [
         'key' => env('BREVO_API_KEY'),
     ],
 
-    'asaas' => [
-        'url' => env('ASAAS_URL', 'https://sandbox.asaas.com/api/v3'),
-        'key' => env('ASAAS_TOKEN'),
+    'payment_gateway' => [
+        'driver' => env('PAYMENT_GATEWAY_DRIVER', 'asaas'),
+        'asaas' => [
+            'url' => env('ASAAS_URL', 'https://sandbox.asaas.com/api/v3'),
+            'key' => env('ASAAS_TOKEN'),
+        ],
+        'cielo' => [
+            'url' => env('GATEWAY_URL'),
+            'query_url' => env('GATEWAY_QUERY_URL'),
+            'merchant_id' => env('GATEWAY_MERCHANT_ID'),
+            'merchant_key' => env('GATEWAY_MERCHANT_KEY'),
+            'client_id' => env('CIELO_CLIENTID'),
+            'client_secret' => env('CIELO_CLIENTSECRET'),
+            'establishment_code' => env('CIELO_ESTABLISHMENT_CODE', '1006993069'),
+            'merchant_name' => env('CIELO_MERCHANT_NAME', 'BoxFarma'),
+            'mcc' => env('CIELO_MCC', '5912'),
+        ],
     ],
 
 

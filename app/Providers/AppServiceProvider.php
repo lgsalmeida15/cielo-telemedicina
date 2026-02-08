@@ -14,6 +14,16 @@ class AppServiceProvider extends ServiceProvider
     public function register()
     {
         $this->app->register(RepositoryServiceProvider::class);
+
+        $this->app->bind(\App\Contracts\PaymentGatewayInterface::class, function ($app) {
+            $driver = config('services.payment_gateway.driver', 'asaas');
+
+            if ($driver === 'cielo') {
+                return $app->make(\App\Services\Payment\CieloAdapter::class);
+            }
+
+            return $app->make(\App\Services\Payment\AsaasAdapter::class);
+        });
     }
 
     /**

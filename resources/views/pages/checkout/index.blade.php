@@ -259,25 +259,25 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label>Nome Completo</label>
-                                <input id="name" name="name" class="form-control form-control-lg"
+                                <input id="name" name="name" class="form-control form-control-lg bpmpi_billto_contactname"
                                     value="{{ old('name') }}">
                             </div>
 
                             <div class="col-md-6 mb-3">
                                 <label>CPF</label>
-                                <input id="cpf" name="cpf" class="form-control form-control-lg"
+                                <input id="cpf" name="cpf" class="form-control form-control-lg bpmpi_billto_customerid"
                                     value="{{ old('cpf') }}" placeholder="___.___.___-__">
                             </div>
 
                             <div class="col-md-6 mb-3">
                                 <label>E-mail</label>
-                                <input id="email" name="email" class="form-control form-control-lg"
+                                <input id="email" name="email" class="form-control form-control-lg bpmpi_billto_email"
                                     value="{{ old('email') }}">
                             </div>
 
                             <div class="col-md-6 mb-3">
                                 <label>Telefone</label>
-                                <input id="phone" name="phone" class="form-control form-control-lg"
+                                <input id="phone" name="phone" class="form-control form-control-lg bpmpi_billto_phonenumber"
                                     value="{{ old('phone') }}" placeholder="( __ ) ______-____">
                             </div>
 
@@ -327,8 +327,8 @@
                             <select id="payment_type" name="payment_type" class="form-control form-control-lg">
                                 <option value="CREDIT_CARD"
                                     {{ old('payment_type') == 'CREDIT_CARD' ? 'selected' : '' }}>Crédito</option>
-                                {{-- <option value="DEBIT_CARD"
-                                    {{ old('payment_type') == 'DEBIT_CARD' ? 'selected' : '' }}>Débito</option> --}}
+                                <option value="DEBIT_CARD"
+                                    {{ old('payment_type') == 'DEBIT_CARD' ? 'selected' : '' }}>Débito</option>
                             </select>
                         </div>
 
@@ -345,19 +345,19 @@
                                 <div class="col-md-6 mb-3">
                                     <label>Número do Cartão</label>
                                     <input id="card_number" name="card_number" value="{{ old('card_number') }}"
-                                        class="form-control form-control-lg">
+                                        class="form-control form-control-lg bpmpi_cardnumber">
                                 </div>
 
                                 <div class="col-md-4 mb-3">
                                     <label>Mês</label>
                                     <input id="card_month" name="card_month" value="{{ old('card_month') }}"
-                                        class="form-control form-control-lg">
+                                        class="form-control form-control-lg bpmpi_cardexpirationmonth">
                                 </div>
 
                                 <div class="col-md-4 mb-3">
                                     <label>Ano</label>
                                     <input id="card_year" name="card_year" value="{{ old('card_year') }}"
-                                        class="form-control form-control-lg">
+                                        class="form-control form-control-lg bpmpi_cardexpirationyear">
                                 </div>
 
                                 <div class="col-md-4 mb-3">
@@ -368,7 +368,7 @@
                                 <div class="col-md-4 mb-3">
                                     <label>CEP</label>
                                     <input id="postal_code" name="postal_code" value="{{ old('postal_code') }}"
-                                        class="form-control form-control-lg">
+                                        class="form-control form-control-lg bpmpi_billto_zipcode">
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label>Número do endereço</label>
@@ -416,6 +416,31 @@
                                 <input type="hidden" name="ccv" id="form_ccv">
                                 <input type="hidden" name="postal_code" id="form_postal_code">
                                 <input type="hidden" name="address_number" id="form_address_number">
+
+                                <!-- Campos ocultos para tokens 3DS Cielo -->
+                                <input type="hidden" name="cielo_3ds_cavv" id="cielo_3ds_cavv">
+                                <input type="hidden" name="cielo_3ds_xid" id="cielo_3ds_xid">
+                                <input type="hidden" name="cielo_3ds_eci" id="cielo_3ds_eci">
+                                <input type="hidden" name="cielo_3ds_version" id="cielo_3ds_version">
+                                <input type="hidden" name="cielo_3ds_reference_id" id="cielo_3ds_reference_id">
+
+                                <!-- Campos ocultos para mapeamento 3DS Cielo (Classes) -->
+                                <input type="hidden" class="bpmpi_auth" value="true">
+                                <input type="hidden" class="bpmpi_accesstoken" id="cielo_3ds_accesstoken">
+                                <input type="hidden" class="bpmpi_ordernumber" id="cielo_3ds_ordernumber">
+                                <input type="hidden" class="bpmpi_currency" value="BRL">
+                                <input type="hidden" class="bpmpi_totalamount" id="cielo_3ds_totalamount">
+                                <input type="hidden" class="bpmpi_installments" value="1">
+                                <input type="hidden" class="bpmpi_paymentmethod" id="cielo_3ds_paymentmethod">
+                                <input type="hidden" class="bpmpi_merchant_url" value="{{ url('/') }}">
+                                <input type="hidden" class="bpmpi_device_channel" value="Browser">
+                                <input type="hidden" class="bpmpi_device_ipaddress" value="{{ request()->ip() }}">
+                                <input type="hidden" class="bpmpi_order_recurrence" value="true">
+                                <input type="hidden" class="bpmpi_recurring_type" value="1">
+                                <input type="hidden" class="bpmpi_billto_country" value="BR">
+                                <input type="hidden" class="bpmpi_billto_street1" id="cielo_3ds_street1">
+                                <input type="hidden" class="bpmpi_billto_city" value="Sao Paulo"> <!-- Fallback ou dinâmico -->
+                                <input type="hidden" class="bpmpi_billto_state" value="SP"> <!-- Fallback ou dinâmico -->
 
                                 <button id="btn-finalizar" type="submit" class="btn btn-success btn-lg px-5" disabled>
                                     Finalizar
@@ -704,7 +729,8 @@
 
 
         /* === SUBMIT === */
-        $('#finalForm').submit(function() {
+        $('#finalForm').submit(function(e) {
+            // Sincroniza os campos visíveis com os campos hidden do formulário final
             $('#form_plan_uuid').val($('#selected_plan').val());
             $('#form_name').val($('#name').val());
             $('#form_cpf').val($('#cpf').val());
@@ -715,17 +741,138 @@
             $('#form_password').val($('#password').val());
             $('#form_mother_name').val($('#mother_name').val());
             $('#form_payment_type').val($('#payment_type').val());
+
             $('#form_card_holder').val($('#card_holder').val());
-            $('#form_card_number').val($('#card_number').val());
+            $('#form_card_number').val($('#card_number').val().replace(/\s/g, ''));
             $('#form_card_month').val($('#card_month').val());
             $('#form_card_year').val($('#card_year').val());
             $('#form_ccv').val($('#ccv').val());
             $('#form_postal_code').val($('#postal_code').val());
             $('#form_address_number').val($('#address_number').val());
+
+            const paymentType = $('#payment_type').val();
+            const cardNumber = $('#card_number').val().replace(/\s/g, '');
+            const isCielo = "{{ config('services.payment_gateway.driver') }}" === 'cielo';
+
+            // Validação de Bandeira ELO (Frontend)
+            if (paymentType === 'CREDIT_CARD' || paymentType === 'DEBIT_CARD') {
+                if (!isCartaoElo(cardNumber)) {
+                    alert('Aceitamos apenas cartões da bandeira ELO.');
+                    return false;
+                }
+            }
+
+            // Se for Cielo e Débito, intercepta para 3DS
+            if (isCielo && paymentType === 'DEBIT_CARD' && !$('#cielo_3ds_eci').val()) {
+                e.preventDefault();
+                startCielo3DS();
+                return false;
+            }
+            // ... resto do código ...
         });
+
+        function isCartaoElo(numero) {
+            const regexElo = /^4011(78|79)|^43(1274|8935)|^45(1416|7393|763(1|2))|^50(4175|6699|67[0-6][0-9]|677[0-8]|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-9])|^627780|^63(6297|6368|6369)|^65(0(0(3([1-3]|[5-9])|4([0-9])|5[0-1])|4(0[5-9]|[1-3][0-9]|8[5-9]|9[0-9])|5([0-2][0-9]|3[0-8]|4[1-9]|[5-8][0-9]|9[0-8])|7(0[0-9]|1[0-8]|2[0-7])|9(0[1-9]|[1-6][0-9]|7[0-8]))|16(5[2-9]|[6-7][0-9])|50(0[0-9]|1[0-9]|2[1-9]|[3-4][0-9]|5[0-8]))/;
+            return regexElo.test(numero);
+        }
+
+        /* === CIELO 3DS LOGIC === */
+        let cieloToken = null;
+        let isCieloScriptLoaded = false;
+
+        function startCielo3DS() {
+            const btn = $('#btn-finalizar');
+            const originalText = btn.text();
+            btn.prop('disabled', true).text('Autenticando...');
+
+            // 1. Obter Access Token do nosso Back-end
+            $.get("{{ route('cielo.3ds.token') }}")
+                .done(function(data) {
+                    console.log("Cielo 3DS Token gerado com sucesso:", data.access_token);
+                    cieloToken = data.access_token;
+                    
+                    // 2. Preencher campos hidden para o script Cielo ler
+                    $('#cielo_3ds_accesstoken').val(cieloToken);
+                    $('#cielo_3ds_ordernumber').val("ORD-" + Math.floor(Math.random() * 1000000));
+                    
+                    const planValueText = $('.plan-card.selected h4').text().trim().replace('R$', '').trim();
+                    const planValueCentavos = Math.round(parseFloat(planValueText.replace('.', '').replace(',', '.')) * 100);
+                    $('#cielo_3ds_totalamount').val(planValueCentavos);
+                    
+                    $('#cielo_3ds_paymentmethod').val($('#payment_type').val() === 'DEBIT_CARD' ? 'Debit' : 'Credit');
+                    $('#cielo_3ds_street1').val("Rua do Cliente, " + $('#address_number').val());
+
+                    // Forçar atualização dos campos bpmpi com os valores atuais dos inputs visíveis
+                    $('.bpmpi_cardnumber').val($('#card_number').val().replace(/\s/g, ''));
+                    $('.bpmpi_cardexpirationmonth').val($('#card_month').val());
+                    $('.bpmpi_cardexpirationyear').val($('#card_year').val());
+
+                    // 3. Injetar o script da Cielo dinamicamente se ainda não existir
+                    const scriptId = 'cielo-3ds-script';
+                    if (!document.getElementById(scriptId)) {
+                        const script = document.createElement('script');
+                        script.id = scriptId;
+                        script.type = 'text/javascript';
+                        script.src = "{{ str_contains(config('services.payment_gateway.cielo.url'), 'sandbox') 
+                            ? 'https://mpisandbox.braspag.com.br/Scripts/BP.Mpi.3ds20.min.js' 
+                            : 'https://mpi.braspag.com.br/Scripts/BP.Mpi.3ds20.min.js' }}";
+                        
+                        document.head.appendChild(script);
+                        // A autenticação será disparada pelo onReady dentro de bpmpi_config()
+                    } else {
+                        // Se já carregou uma vez, apenas chama
+                        if (typeof bpmpi_authenticate === 'function') {
+                            bpmpi_authenticate();
+                        }
+                    }
+                })
+                .fail(function() {
+                    alert('Erro ao obter token de autenticação.');
+                    btn.prop('disabled', false).text(originalText);
+                });
+        }
+
+        function bpmpi_config() {
+            return {
+                onReady: function () {
+                    console.log("Cielo 3DS Ready - Disparando autenticação...");
+                    isCieloScriptLoaded = true;
+                    // Dispara a autenticação assim que o script estiver pronto
+                    if (typeof bpmpi_authenticate === 'function') {
+                        bpmpi_authenticate();
+                    }
+                },
+                onSuccess: function (e) {
+                    $('#cielo_3ds_cavv').val(e.Cavv);
+                    $('#cielo_3ds_xid').val(e.Xid);
+                    $('#cielo_3ds_eci').val(e.Eci);
+                    $('#cielo_3ds_version').val(e.Version);
+                    $('#cielo_3ds_reference_id').val(e.ReferenceId);
+                    
+                    // Continua o submit do formulário
+                    $('#finalForm').submit();
+                },
+                onFailure: function (e) {
+                    alert("Falha na autenticação do cartão: " + (e.ReturnMessage || "Erro desconhecido"));
+                    $('#btn-finalizar').prop('disabled', false).text('Finalizar');
+                },
+                onUnenrolled: function (e) {
+                    // Para débito, a autenticação 3DS é obrigatória.
+                    // Se o cartão não for elegível ou o emissor não participar, barramos a transação.
+                    alert("Seu cartão ou banco emissor não suporta autenticação 3DS, que é obrigatória para transações de débito. Por favor, utilize outro cartão ou a função crédito.");
+                    $('#btn-finalizar').prop('disabled', false).text('Finalizar');
+                },
+                onError: function (e) {
+                    alert("Erro no processo de autenticação: " + (e.ReturnMessage || "Erro sistêmico"));
+                    $('#btn-finalizar').prop('disabled', false).text('Finalizar');
+                },
+                Environment: "{{ str_contains(config('services.payment_gateway.cielo.url'), 'sandbox') ? 'SDB' : 'PRD' }}",
+                Debug: true
+            };
+        }
     </script>
 
-
+    <!-- Script Cielo 3DS removido daqui para carregamento sob demanda -->
 </body>
 
 </html>

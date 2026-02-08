@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Beneficiary;
 
-use App\Services\Asaas\AsaasService;
+use App\Contracts\PaymentGatewayInterface;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Plan;
@@ -12,9 +12,17 @@ use App\Models\Dependent;
 use App\Models\Beneficiary;
 use Illuminate\Support\Facades\Hash;
 use App\Services\SubscriptionCancellationService;
+use Exception;
 
 class BeneficiaryAreaController extends Controller
 {
+    protected $gateway;
+
+    public function __construct(PaymentGatewayInterface $gateway)
+    {
+        $this->gateway = $gateway;
+    }
+
     /**
      * Controller de gestão da área do Beneficiário
      */
@@ -22,7 +30,16 @@ class BeneficiaryAreaController extends Controller
     public function index()
     {
         $beneficiary = Auth::guard('beneficiary')->user();
+        
+        \Log::info("Acessando BeneficiaryAreaController@index para o beneficiário ID: " . ($beneficiary->id ?? 'NÃO LOGADO'));
+
+        if (!$beneficiary) {
+            \Log::error("Acesso negado: Beneficiário não está autenticado no guard 'beneficiary'.");
+            return redirect()->route('beneficiary.login');
+        }
+
         if ($beneficiary->isInadimplente()) {
+            \Log::warning("Beneficiário ID {$beneficiary->id} redirecionado por inadimplência.");
             // Adicionar a logica caso esteja inadiplente
         }
 
@@ -30,48 +47,53 @@ class BeneficiaryAreaController extends Controller
 
         // INSTANCIA SERVIÇO IBAM
         $ibam = new \App\Services\IBAMService("https://sistema.ibambeneficios.com.br/api/external/");
-        $ibam->login();
+        
+        try {
+            $ibam->login();
 
-        // 1) CONSULTA NA API DO IBAM
-        $exists = $ibam->findBeneficiary($cpf);
-        $docwayUuid = null;
-        if (
-            isset($exists['response']['exists']) &&
-            $exists['response']['exists'] === true &&
-            isset($exists['response']['data']['docway_patient_id'])
-        ) {
-            // Já existe na IBAM
-            $docwayUuid = $exists['response']['data']['docway_patient_id'];
-        } else {
+            // 1) CONSULTA NA API DO IBAM
+            $exists = $ibam->findBeneficiary($cpf);
+            $docwayUuid = null;
+            if (
+                isset($exists['response']['exists']) &&
+                $exists['response']['exists'] === true &&
+                isset($exists['response']['data']['docway_patient_id'])
+            ) {
+                // Já existe na IBAM
+                $docwayUuid = $exists['response']['data']['docway_patient_id'];
+            } else {
 
-            // 2) NÃO EXISTE → CRIAR AUTOMATICAMENTE
-            $create = $ibam->createBeneficiary([
-                "name" => $beneficiary->name,
-                "cpf" => $cpf,
-                "email" => $beneficiary->email,
-                "phone" => $beneficiary->phone,
-                "birth_date" => $beneficiary->birth_date,
-                "gender" => $beneficiary->gender,
-                "mother_name" => $beneficiary->mother_name,
-                "relationship" => "Titular"
-            ]);
+                // 2) NÃO EXISTE → CRIAR AUTOMATICAMENTE
+                $create = $ibam->createBeneficiary([
+                    "name" => $beneficiary->name,
+                    "cpf" => $cpf,
+                    "email" => $beneficiary->email,
+                    "phone" => $beneficiary->phone,
+                    "birth_date" => $beneficiary->birth_date,
+                    "gender" => $beneficiary->gender,
+                    "mother_name" => $beneficiary->mother_name,
+                    "relationship" => "Titular"
+                ]);
 
-            // Reconsulta para obter ID correto
-            $create = $ibam->findBeneficiary($cpf);
+                // Reconsulta para obter ID correto
+                $create = $ibam->findBeneficiary($cpf);
 
-            if (!isset($create['response']['success']) || $create['response']['success'] !== true) {
-                return back()->withErrors("Erro ao sincronizar beneficiário com IBAM.");
+                if (!isset($create['response']['success']) || $create['response']['success'] !== true) {
+                    return back()->withErrors("Erro ao sincronizar beneficiário com IBAM.");
+                }
+
+                $docwayUuid = $create['response']['uuid'] ?? null;
+
+                if (!$docwayUuid) {
+                    return back()->withErrors("IBAM não retornou UUID do beneficiário.");
+                }
+
+                // 3) Atualiza beneficiário localmente (opcional)
+                $beneficiary->docway_patient_id = $docwayUuid;
+                $beneficiary->save();
             }
-
-            $docwayUuid = $create['response']['uuid'] ?? null;
-
-            if (!$docwayUuid) {
-                return back()->withErrors("IBAM não retornou UUID do beneficiário.");
-            }
-
-            // 3) Atualiza beneficiário localmente (opcional)
-            $beneficiary->docway_patient_id = $docwayUuid;
-            $beneficiary->save();
+        } catch (\Exception $e) {
+            \Log::error("Erro IBAM no index: " . $e->getMessage());
         }
 
         // CARREGA OS PLANOS
@@ -187,7 +209,7 @@ class BeneficiaryAreaController extends Controller
         ];
 
         try {
-            app(AsaasService::class)->updateSubscriptionCreditCard(
+            $this->gateway->updateSubscriptionCreditCard(
                 $subscriptionId,
                 $creditCard,
                 $holderInfo,
