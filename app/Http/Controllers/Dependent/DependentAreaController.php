@@ -142,7 +142,7 @@ class DependentAreaController
 
                 $response = $ibam->medcareAvailableHours(
                     $docwayPatientId,
-                    $specialtyId, // Clínico Geral ou Pediatra
+                    1, // Sempre busca horários do Clínico Geral para listagem
                     $date
                 );
 
