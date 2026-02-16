@@ -16,7 +16,7 @@ Este documento rastreia todos os pontos de amarração direta com o Asaas que pr
 - [x] Criar `app/Contracts/PaymentGatewayInterface.php`.
 - [x] Criar `app/Services/Payment/AsaasAdapter.php` (Implementando a Interface com o código atual).
 - [x] Criar `app/Services/Payment/CieloAdapter.php` (Implementação inicial para Crédito).
-- [ ] Implementar Débito no `CieloAdapter.php` (Diferente do Crédito).
+- [x] Implementar Débito no `CieloAdapter.php` (Migrado para Braspag v2 com suporte a 3DS e regra Elo 2025).
 - [x] Configurar `AppServiceProvider.php` para vincular a Interface ao Adaptador.
 - [x] `app/Services/BeneficiaryService.php`: Remover chamada direta ao `AsaasCustomerService`. (Refatorado para usar `PaymentGatewayInterface`)
 - [x] `app/Services/SubscriptionCancellationService.php`: Remover dependência do `AsaasService`. (Refatorado para usar `PaymentGatewayInterface`)
@@ -49,4 +49,6 @@ Este documento rastreia todos os pontos de amarração direta com o Asaas que pr
 - [x] Mapear classes `bpmpi_` no `resources/views/pages/checkout/index.blade.php`.
 - [x] Implementar lógica JavaScript para interceptar checkout de débito e disparar `bpmpi_authenticate()`.
 - [x] Ajustar `createSubscription` no `CieloAdapter.php` para processar `DEBIT_CARD` com `ExternalAuthentication`.
+- [x] Migração para Braspag v2: Atualizados endpoints de `/1/sales` para `/v2/sales` e adicionado suporte ao provedor "Simulado" para Sandbox.
+- [x] Conformidade Elo 2025: Adicionado campo `SolutionType` para transações da bandeira Elo.
 - [x] Validar captura de `RecurrentPaymentId` no retorno da Cielo para Débito.

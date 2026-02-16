@@ -73,6 +73,7 @@ class CieloAdapter implements PaymentGatewayInterface
 
         $paymentType = request('payment_type') === 'DEBIT_CARD' ? 'DebitCard' : 'CreditCard';
         $cardKey = $paymentType === 'DebitCard' ? 'DebitCard' : 'CreditCard';
+        $brand = $this->detectCardBrand($creditCard['number'] ?? $creditCard['card_number']);
 
         $payload = [
             "MerchantOrderId" => uniqid("ORDER_"),
@@ -99,12 +100,17 @@ class CieloAdapter implements PaymentGatewayInterface
                     "ExpirationDate" => $expirationDate,
                     "SecurityCode" => $creditCard['ccv'],
                     "SaveCard" => true,
-                    "Brand" => $this->detectCardBrand($creditCard['number'] ?? $creditCard['card_number'])
+                    "Brand" => $brand
                 ]
             ]
         ];
 
-        // Se houver dados de autenticação 3DS (obrigatório para Débito)
+        // Configurações específicas para Braspag v2 / Débito / 3DS
+        if ($paymentType === 'DebitCard' || request('cielo_3ds_eci')) {
+            $payload['Payment']['Authenticate'] = true;
+        }
+
+        // Se houver dados de autenticação 3DS vindos do checkout
         if (request('cielo_3ds_eci')) {
             $payload['Payment']['ExternalAuthentication'] = [
                 "Cavv" => request('cielo_3ds_cavv'),
@@ -113,14 +119,23 @@ class CieloAdapter implements PaymentGatewayInterface
                 "Version" => request('cielo_3ds_version'),
                 "ReferenceId" => request('cielo_3ds_reference_id')
             ];
-            $payload['Payment']['Authenticate'] = true;
+        }
+
+        // Regra Elo 2025 (Obrigatório para Link de Pagamento/External)
+        if ($brand === 'Elo') {
+            $payload['Payment']['SolutionType'] = "ExternalLinkPay";
+        }
+
+        // Provedor Simulado para Sandbox Braspag
+        if (str_contains($this->baseUrl, 'sandbox')) {
+            $payload['Payment']['Provider'] = "Simulado";
         }
 
         $response = Http::withHeaders([
             'MerchantId' => $this->merchantId,
             'MerchantKey' => $this->merchantKey,
             'Content-Type' => 'application/json',
-        ])->post($this->baseUrl . '/1/sales', $payload);
+        ])->post($this->baseUrl . '/v2/sales', $payload);
 
         if (!$response->successful()) {
             throw new Exception("Erro Cielo: " . ($response->json()['Message'] ?? $response->body()));
@@ -158,7 +173,7 @@ class CieloAdapter implements PaymentGatewayInterface
             'MerchantId' => $this->merchantId,
             'MerchantKey' => $this->merchantKey,
             'Content-Type' => 'application/json',
-        ])->get($queryUrl . "/1/sales/{$paymentId}");
+        ])->get($queryUrl . "/v2/sales/{$paymentId}");
 
         if (!$response->successful()) {
             return null;
