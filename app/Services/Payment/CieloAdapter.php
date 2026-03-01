@@ -13,6 +13,7 @@ class CieloAdapter implements PaymentGatewayInterface
     protected string $merchantKey;
     protected string $clientId;
     protected string $clientSecret;
+    protected bool $use3ds;
 
     public function __construct()
     {
@@ -21,6 +22,7 @@ class CieloAdapter implements PaymentGatewayInterface
         $this->merchantKey = config('services.payment_gateway.cielo.merchant_key');
         $this->clientId = config('services.payment_gateway.cielo.client_id');
         $this->clientSecret = config('services.payment_gateway.cielo.client_secret');
+        $this->use3ds = config('services.payment_gateway.cielo.use_3ds', false);
     }
 
     /**
@@ -106,12 +108,12 @@ class CieloAdapter implements PaymentGatewayInterface
         ];
 
         // Configurações específicas para Braspag v2 / Débito / 3DS
-        if ($paymentType === 'DebitCard' || request('cielo_3ds_eci')) {
+        if ($this->use3ds && ($paymentType === 'DebitCard' || request('cielo_3ds_eci'))) {
             $payload['Payment']['Authenticate'] = true;
         }
 
-        // Se houver dados de autenticação 3DS vindos do checkout
-        if (request('cielo_3ds_eci')) {
+        // Se houver dados de autenticação 3DS vindos do checkout (e o 3DS estiver habilitado)
+        if ($this->use3ds && request('cielo_3ds_eci')) {
             $payload['Payment']['ExternalAuthentication'] = [
                 "Cavv" => request('cielo_3ds_cavv'),
                 "Xid" => request('cielo_3ds_xid'),

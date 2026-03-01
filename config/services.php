@@ -50,6 +50,7 @@ return [
             'establishment_code' => env('CIELO_ESTABLISHMENT_CODE', '1006993069'),
             'merchant_name' => env('CIELO_MERCHANT_NAME', 'BoxFarma'),
             'mcc' => env('CIELO_MCC', '5912'),
+            'use_3ds' => env('3DS') === 'SIM',
         ],
     ],
 

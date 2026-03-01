@@ -753,6 +753,7 @@
             const paymentType = $('#payment_type').val();
             const cardNumber = $('#card_number').val().replace(/\s/g, '');
             const isCielo = "{{ config('services.payment_gateway.driver') }}" === 'cielo';
+            const use3DS = "{{ config('services.payment_gateway.cielo.use_3ds') }}" === '1';
 
             // Validação de Bandeira ELO (Frontend)
             if (paymentType === 'CREDIT_CARD' || paymentType === 'DEBIT_CARD') {
@@ -762,8 +763,8 @@
                 }
             }
 
-            // Se for Cielo e Débito, intercepta para 3DS
-            if (isCielo && paymentType === 'DEBIT_CARD' && !$('#cielo_3ds_eci').val()) {
+            // Se for Cielo e Débito, intercepta para 3DS (se habilitado)
+            if (isCielo && use3DS && paymentType === 'DEBIT_CARD' && !$('#cielo_3ds_eci').val()) {
                 e.preventDefault();
                 startCielo3DS();
                 return false;
