@@ -21,6 +21,8 @@ Este documento rastreia todos os pontos de amarração direta com o Asaas que pr
 - [x] Configurar Atualização de Cartão no `CieloAdapter.php` (Redirecionamento para suporte via e-mail: telemedicina@boxfarma.co).
 - [x] Refatorar `BeneficiaryAreaController.php` para busca agnóstica de faturas (Cielo/Asaas).
 - [x] Refatorar `SubscriptionCancellationService.php` para lógica híbrida: Cancelar na API se Crédito, apenas inativar localmente se Débito.
+- [ ] Implementar Consulta de Recorrência no `CieloAdapter.php` (GET `/v2/recurrentpayment/{RecurrentPaymentId}`).
+- [ ] Ajustar `PaymentSyncInvoices.php` para ignorar faturas de Débito (processadas por motor externo) e focar em Crédito Cielo.
 - [x] Configurar `AppServiceProvider.php` para vincular a Interface ao Adaptador.
 - [x] `app/Services/BeneficiaryService.php`: Remover chamada direta ao `AsaasCustomerService`. (Refatorado para usar `PaymentGatewayInterface`)
 - [x] `app/Services/SubscriptionCancellationService.php`: Remover dependência do `AsaasService`. (Refatorado para usar `PaymentGatewayInterface`)
