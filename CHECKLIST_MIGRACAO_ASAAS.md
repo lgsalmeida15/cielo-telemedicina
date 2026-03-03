@@ -17,6 +17,10 @@ Este documento rastreia todos os pontos de amarração direta com o Asaas que pr
 - [x] Criar `app/Services/Payment/AsaasAdapter.php` (Implementando a Interface com o código atual).
 - [x] Criar `app/Services/Payment/CieloAdapter.php` (Implementação inicial para Crédito).
 - [x] Implementar Débito no `CieloAdapter.php` (Migrado para Braspag v2 com suporte a 3DS e regra Elo 2025).
+- [x] Implementar Cancelamento de Assinatura no `CieloAdapter.php` (Estorno/Void via Braspag v2).
+- [x] Configurar Atualização de Cartão no `CieloAdapter.php` (Redirecionamento para suporte via e-mail: telemedicina@boxfarma.co).
+- [x] Refatorar `BeneficiaryAreaController.php` para busca agnóstica de faturas (Cielo/Asaas).
+- [x] Refatorar `SubscriptionCancellationService.php` para lógica híbrida: Cancelar na API se Crédito, apenas inativar localmente se Débito.
 - [x] Configurar `AppServiceProvider.php` para vincular a Interface ao Adaptador.
 - [x] `app/Services/BeneficiaryService.php`: Remover chamada direta ao `AsaasCustomerService`. (Refatorado para usar `PaymentGatewayInterface`)
 - [x] `app/Services/SubscriptionCancellationService.php`: Remover dependência do `AsaasService`. (Refatorado para usar `PaymentGatewayInterface`)

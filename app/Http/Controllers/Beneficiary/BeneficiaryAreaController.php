@@ -175,10 +175,9 @@ class BeneficiaryAreaController extends Controller
     {
         $beneficiary = auth('beneficiary')->user();
 
-        // 🔍 Busca a assinatura (sub_...)
+        // 🔍 Busca a última invoice independente do prefixo (Asaas ou Cielo)
         $subscriptionInvoice = $beneficiary->invoices()
-            ->where('asaas_payment_id', 'like', 'sub_%')
-            ->latest()
+            ->orderByDesc('created_at')
             ->first();
 
         if (!$subscriptionInvoice) {

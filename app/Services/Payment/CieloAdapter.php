@@ -156,15 +156,26 @@ class CieloAdapter implements PaymentGatewayInterface
         ];
     }
 
-    public function cancelSubscription($subscriptionId)
+    public function cancelSubscription($paymentId)
     {
-        // Implementação de cancelamento Cielo (Put /1/sales/{PaymentId}/void)
-        throw new Exception("Cancelamento ainda não implementado para Cielo.");
+        $response = Http::withHeaders([
+            'MerchantId'  => $this->merchantId,
+            'MerchantKey' => $this->merchantKey,
+            'Content-Type' => 'application/json',
+        ])->put($this->baseUrl . "/v2/sales/{$paymentId}/void");
+
+        if (!$response->successful()) {
+            throw new Exception("Erro ao cancelar/estornar na Cielo: " . ($response->json()['Message'] ?? $response->body()));
+        }
+
+        return $response->json();
     }
 
     public function updateSubscriptionCreditCard($subscriptionId, $creditCard, $holderInfo, $remoteIp)
     {
-        throw new Exception("Atualização de cartão ainda não implementada para Cielo.");
+        throw new \Exception(
+            "Para sua segurança, a atualização de cartão para este plano deve ser solicitada diretamente ao nosso suporte através do e-mail: telemedicina@boxfarma.co"
+        );
     }
 
     public function getPaymentStatus($paymentId)

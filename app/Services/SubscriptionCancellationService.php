@@ -30,28 +30,27 @@ class SubscriptionCancellationService
             throw new Exception('Plano ativo não encontrado.');
         }
 
-        // 🔍 Invoice que contém o ID da assinatura (sub_...)
-        $subscriptionInvoice = $beneficiary->invoices()
-            ->where('asaas_payment_id', 'like', 'sub_%')
+        // 🔍 Busca a última invoice para identificar o tipo de pagamento e o ID (Agnóstico a Gateway)
+        $lastInvoice = $beneficiary->invoices()
             ->orderByDesc('created_at')
             ->first();
 
-        if (!$subscriptionInvoice) {
-             throw new Exception('Assinatura não encontrada para este beneficiário.');
+        if (!$lastInvoice) {
+             throw new Exception('Nenhuma fatura encontrada para este beneficiário.');
         }
 
-        $subscriptionId = $subscriptionInvoice->asaas_payment_id;
+        $paymentId = $lastInvoice->asaas_payment_id; // Campo onde o ID do gateway está armazenado
+        $isCreditCard = ($lastInvoice->payment_type === 'CREDIT_CARD');
         
+        // 📅 Calcula fim do período pago
         // 🔍 Última invoice paga (pay_...)
         $lastPaidInvoice = $beneficiary->invoices()
-            ->whereIn('status', ['CONFIRMED', 'RECEIVED'])
-            ->where('asaas_payment_id', 'like', 'pay_%')
+            ->whereIn('status', ['CONFIRMED', 'RECEIVED', 'AUTHORIZED'])
             ->orderByDesc('payment_date')
             ->first();
 
-        // 📅 Calcula fim do período pago
         if ($lastPaidInvoice != null) {
-            $endDate = Carbon::parse($lastPaidInvoice->due_date)
+            $endDate = Carbon::parse($lastPaidInvoice->due_date ?? $lastPaidInvoice->created_at)
                 ->addMonth()
                 ->subDay()
                 ->toDateString();
@@ -74,11 +73,13 @@ class SubscriptionCancellationService
             $html
         );
 
-        DB::transaction(function () use ($subscriptionId, $plan, $endDate) {
-            // ❌ Cancela assinatura no Gateway
-            $this->gateway->cancelSubscription($subscriptionId);
+        DB::transaction(function () use ($paymentId, $plan, $endDate, $isCreditCard) {
+            // ❌ Se for Crédito, cancela a recorrência no Gateway ativo
+            if ($isCreditCard && $paymentId) {
+                $this->gateway->cancelSubscription($paymentId);
+            }
 
-            // 📅 Mantém acesso até o fim do ciclo
+            // 📅 Mantém acesso até o fim do ciclo (bloqueia o motor de débito externo)
             $plan->update([
                 'end_date' => $endDate
             ]);
