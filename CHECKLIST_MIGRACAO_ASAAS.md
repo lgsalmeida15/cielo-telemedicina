@@ -56,5 +56,10 @@ Este documento rastreia todos os pontos de amarração direta com o Asaas que pr
 - [x] Implementar lógica JavaScript para interceptar checkout de débito e disparar `bpmpi_authenticate()`.
 - [x] Ajustar `createSubscription` no `CieloAdapter.php` para processar `DEBIT_CARD` com `ExternalAuthentication`.
 - [x] Migração para Braspag v2: Atualizados endpoints de `/1/sales` para `/v2/sales` e adicionado suporte ao provedor "Simulado" para Sandbox.
+- [x] Adequação do Payload Cielo: Adicionados campos `Birthdate` e `Address` ao objeto `Customer` para conformidade com o modelo Braspag.
+- [x] Refinar Tratamento de Resposta Cielo:
+    - [x] Capturar `RecurrentPaymentId` no retorno de sucesso para viabilizar faturamentos futuros.
+    - [x] Melhorar captura de mensagens de erro (`ProviderReturnMessage` / `ReasonMessage`) para exibição amigável no checkout.
+    - [x] Garantir que erros de cartão mantenham o usuário na tela de checkout (mesma dinâmica do Asaas).
 - [x] Conformidade Elo 2025: Adicionado campo `SolutionType` para transações da bandeira Elo.
 - [x] Validar captura de `RecurrentPaymentId` no retorno da Cielo para Débito.

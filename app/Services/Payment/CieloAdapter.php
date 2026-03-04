@@ -77,21 +77,34 @@ class CieloAdapter implements PaymentGatewayInterface
         $cardKey = $paymentType === 'DebitCard' ? 'DebitCard' : 'CreditCard';
         $brand = $this->detectCardBrand($creditCard['number'] ?? $creditCard['card_number']);
 
+        // 🔍 Captura e formata a data de nascimento do beneficiário (YYYY-MM-DD)
+        $birthDate = null;
+        if (isset($holderInfo['birth_date'])) {
+            try {
+                $birthDate = \Carbon\Carbon::parse($holderInfo['birth_date'])->format('Y-m-d');
+            } catch (\Exception $e) {
+                $birthDate = null;
+            }
+        }
+
         $payload = [
             "MerchantOrderId" => uniqid("ORDER_"),
             "Customer" => [
                 "Name" => $holderInfo['name'],
                 "Identity" => preg_replace('/\D/', '', $holderInfo['cpfCnpj']),
                 "IdentityType" => "CPF",
-                "Email" => $holderInfo['email']
+                "Email" => $holderInfo['email'],
+                "Birthdate" => $birthDate,
+                "Address" => [
+                    "Number" => $holderInfo['addressNumber'] ?? 'SN',
+                    "ZipCode" => preg_replace('/\D/', '', $holderInfo['postalCode'] ?? '')
+                ]
             ],
             "Payment" => [
                 "Type" => $paymentType,
                 "Amount" => $amount,
                 "Installments" => 1,
-                "SoftDescriptor" => substr($description, 0, 13),
                 "Capture" => true,
-                "Recurrent" => true,
                 "RecurrentPayment" => [
                     "AuthorizeNow" => true,
                     "Interval" => "Monthly"
@@ -101,11 +114,15 @@ class CieloAdapter implements PaymentGatewayInterface
                     "Holder" => $creditCard['holderName'] ?? $creditCard['card_holder'],
                     "ExpirationDate" => $expirationDate,
                     "SecurityCode" => $creditCard['ccv'],
-                    "SaveCard" => true,
                     "Brand" => $brand
                 ]
             ]
         ];
+
+        // Provedor Simulado para Sandbox Braspag
+        if (str_contains($this->baseUrl, 'sandbox')) {
+            $payload['Payment']['Provider'] = "Simulado";
+        }
 
         // Configurações específicas para Braspag v2 / Débito / 3DS
         if ($this->use3ds && ($paymentType === 'DebitCard' || request('cielo_3ds_eci'))) {
@@ -128,15 +145,11 @@ class CieloAdapter implements PaymentGatewayInterface
             $payload['Payment']['SolutionType'] = "ExternalLinkPay";
         }
 
-        // Provedor Simulado para Sandbox Braspag
-        if (str_contains($this->baseUrl, 'sandbox')) {
-            $payload['Payment']['Provider'] = "Simulado";
-        }
-
         $response = Http::withHeaders([
             'MerchantId' => $this->merchantId,
             'MerchantKey' => $this->merchantKey,
             'Content-Type' => 'application/json',
+            'Accept' => 'application/json'
         ])->post($this->baseUrl . '/v2/sales', $payload);
 
         if (!$response->successful()) {
@@ -145,13 +158,24 @@ class CieloAdapter implements PaymentGatewayInterface
 
         $data = $response->json();
 
+        // 🛑 TRATAMENTO DE ERROS DINÂMICOS DA BRASPAG (Mesma dinâmica do Asaas)
+        if (!$response->successful() || (isset($data['Payment']['Status']) && $data['Payment']['Status'] == 3)) {
+            $errorMessage = $data['Payment']['ProviderReturnMessage'] 
+                            ?? $data['Payment']['ReasonMessage'] 
+                            ?? $data['Message'] 
+                            ?? "Erro ao processar pagamento com cartão.";
+            
+            throw new Exception($errorMessage);
+        }
+
         // Mapeamos o retorno para um formato compatível com o que o InvoiceService espera
         return [
             'id' => $data['Payment']['PaymentId'] ?? null,
+            'recurrent_id' => $data['Payment']['RecurrentPayment']['RecurrentPaymentId'] ?? null, // 🔑 Captura o ID da recorrência para renovações
             'status' => $this->translateStatus($data['Payment']['Status'] ?? null),
             'value' => $value, // valor em decimal
             'billingType' => 'CREDIT_CARD',
-            'nextDueDate' => now()->format('Y-m-d'), // Cielo captura na hora
+            'nextDueDate' => $data['Payment']['RecurrentPayment']['NextRecurrency'] ?? now()->format('Y-m-d'),
             'raw_response' => $data
         ];
     }
