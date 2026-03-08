@@ -54,6 +54,11 @@ class AsaasService
         ]);
     }
 
+    public function getSubscription(string $subscriptionId)
+    {
+        return $this->request('get', "/subscriptions/{$subscriptionId}");
+    }
+
     /**
      * Summary of updateSubscriptionCreditCard
      * @param string $subscriptionId

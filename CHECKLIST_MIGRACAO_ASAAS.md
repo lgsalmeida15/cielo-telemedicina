@@ -8,6 +8,7 @@ Este documento rastreia todos os pontos de amarração direta com o Asaas que pr
 
 ## 2. Banco de Dados (Migrations/Models)
 - [x] Adicionar coluna `payment_gateway` com valor padrão `asaas` nas tabelas `beneficiaries` e `invoices`.
+- [x] Adicionar coluna `gateway_recurrent_id` na tabela `invoices` para gerenciar assinaturas Cielo/Braspag.
 - [ ] `database/migrations/2025_11_24_162838_create_invoices_table.php`: Renomear `asaas_payment_id` para `gateway_payment_id`. (Pendente - Opção B: Gradual)
 - [ ] `app/Models/Beneficiary.php`: Renomear atributo `asaas_customer_id` para `gateway_customer_id`. (Pendente - Opção B: Gradual)
 - [ ] Criar migration para renomear as colunas acima em produção. (Pendente - Opção B: Gradual)
@@ -21,8 +22,8 @@ Este documento rastreia todos os pontos de amarração direta com o Asaas que pr
 - [x] Configurar Atualização de Cartão no `CieloAdapter.php` (Redirecionamento para suporte via e-mail: telemedicina@boxfarma.co).
 - [x] Refatorar `BeneficiaryAreaController.php` para busca agnóstica de faturas (Cielo/Asaas).
 - [x] Refatorar `SubscriptionCancellationService.php` para lógica híbrida: Cancelar na API se Crédito, apenas inativar localmente se Débito.
-- [ ] Implementar Consulta de Recorrência no `CieloAdapter.php` (GET `/v2/recurrentpayment/{RecurrentPaymentId}`).
-- [ ] Ajustar `PaymentSyncInvoices.php` para ignorar faturas de Débito (processadas por motor externo) e focar em Crédito Cielo.
+- [x] Implementar Consulta de Recorrência no `CieloAdapter.php` (GET `/v2/recurrentpayment/{RecurrentPaymentId}`).
+- [x] Ajustar `PaymentSyncInvoices.php` para suportar motor de recorrência Cielo (Sincronização via `RecurrentTransactions`).
 - [x] Configurar `AppServiceProvider.php` para vincular a Interface ao Adaptador.
 - [x] `app/Services/BeneficiaryService.php`: Remover chamada direta ao `AsaasCustomerService`. (Refatorado para usar `PaymentGatewayInterface`)
 - [x] `app/Services/SubscriptionCancellationService.php`: Remover dependência do `AsaasService`. (Refatorado para usar `PaymentGatewayInterface`)
@@ -61,5 +62,8 @@ Este documento rastreia todos os pontos de amarração direta com o Asaas que pr
     - [x] Capturar `RecurrentPaymentId` no retorno de sucesso para viabilizar faturamentos futuros.
     - [x] Melhorar captura de mensagens de erro (`ProviderReturnMessage` / `ReasonMessage`) para exibição amigável no checkout.
     - [x] Garantir que erros de cartão mantenham o usuário na tela de checkout (mesma dinâmica do Asaas).
+- [x] Revisitar Arquitetura de Armazenamento de IDs Cielo:
+    - [x] Criada coluna `gateway_recurrent_id` na tabela `invoices` para otimizar a performance do motor de sincronização.
+    - [x] Implementado fluxo de consulta via `RecurrentPaymentId` no comando de sincronização.
 - [x] Conformidade Elo 2025: Adicionado campo `SolutionType` para transações da bandeira Elo.
 - [x] Validar captura de `RecurrentPaymentId` no retorno da Cielo para Débito.

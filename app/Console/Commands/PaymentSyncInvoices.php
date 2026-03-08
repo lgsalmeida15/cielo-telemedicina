@@ -57,6 +57,13 @@ class PaymentSyncInvoices extends Command
             try {
                 // Resolve o gateway da invoice
                 $gateway = $this->resolveGateway($invoice->payment_gateway);
+                
+                // Se for Cielo e tiver recurrent_id, sincroniza a recorrência inteira
+                if ($invoice->payment_gateway === 'cielo' && $invoice->gateway_recurrent_id) {
+                    $this->syncCieloRecurrence($invoice->gateway_recurrent_id, $companyId);
+                    continue;
+                }
+
                 $paymentData = $gateway->getPaymentStatus($invoice->asaas_payment_id);
 
                 if ($paymentData) {
@@ -64,6 +71,27 @@ class PaymentSyncInvoices extends Command
                 }
             } catch (Exception $e) {
                 $this->error("❌ Erro ao sincronizar invoice {$invoice->asaas_payment_id}: " . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Sincroniza uma recorrência da Cielo e todas as suas transações
+     */
+    protected function syncCieloRecurrence($recurrentId, $companyId)
+    {
+        $gateway = app(CieloAdapter::class);
+        $recurrentData = $gateway->getSubscriptionStatus($recurrentId);
+
+        if (!$recurrentData) return;
+
+        foreach ($recurrentData['transactions'] as $transaction) {
+            // Cada transação da Cielo precisa ser consultada individualmente para pegar os detalhes
+            $paymentData = $gateway->getPaymentStatus($transaction['TransactionId']);
+            if ($paymentData) {
+                // Adicionamos o recurrent_id para que o syncSinglePayment saiba vincular
+                $paymentData['gateway_recurrent_id'] = $recurrentId;
+                $this->syncSinglePayment($paymentData, 'cielo', $companyId);
             }
         }
     }
@@ -159,11 +187,14 @@ class PaymentSyncInvoices extends Command
     protected function updateLocalInvoice($payment, $beneficiary, $beneficiaryPlan, $dueDate, $newStatus, $gatewayName)
     {
         $paymentId = $payment['id'] ?? $payment['PaymentId'] ?? null;
+        $recurrentId = $payment['gateway_recurrent_id'] ?? null;
+        
         $invoice = Invoice::where('asaas_payment_id', $paymentId)->first();
 
         if (!$invoice) {
             $invoice = Invoice::create([
                 'asaas_payment_id'    => $paymentId,
+                'gateway_recurrent_id'=> $recurrentId,
                 'payment_gateway'     => $gatewayName,
                 'beneficiary_id'      => $beneficiary->id,
                 'beneficiary_plan_id' => $beneficiaryPlan->id,
@@ -180,6 +211,7 @@ class PaymentSyncInvoices extends Command
                 $invoice->update([
                     'status'       => $newStatus,
                     'payment_date' => $payment['paymentDate'] ?? $invoice->payment_date,
+                    'gateway_recurrent_id' => $recurrentId ?? $invoice->gateway_recurrent_id,
                 ]);
             }
         }

@@ -34,7 +34,8 @@ class Invoice extends Model implements Transformable
         'due_date',
         'payment_type',
         'payment_date',
-        'payment_gateway'
+        'payment_gateway',
+        'gateway_recurrent_id'
     ];
 
     /**

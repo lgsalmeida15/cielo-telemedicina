@@ -223,18 +223,61 @@ class CieloAdapter implements PaymentGatewayInterface
             return null;
         }
 
-        // Mapeamento de status Cielo para um formato comum (ou manter o original se preferir)
-        // Cielo Status: 1 (Autorizado), 2 (Capturado), etc.
+        // Mapeamento de status Cielo para um formato comum
         return [
             'id' => $payment['PaymentId'],
             'status' => $this->translateStatus($payment['Status']),
-            'value' => $payment['Amount'] / 100, // Volta para decimal
-            'billingType' => $payment['Type'],
+            'value' => $payment['Amount'] / 100,
+            'billingType' => $payment['Type'] === 'CreditCard' ? 'CREDIT_CARD' : 'DEBIT_CARD',
             'paymentDate' => $payment['ReceivedDate'] ?? null,
-            'dueDate' => $payment['ReceivedDate'] ?? null, // Cielo não tem due_date igual Asaas para cartão
+            'dueDate' => $payment['ReceivedDate'] ?? null,
             'description' => $data['MerchantOrderId'] ?? '',
             'customer' => $data['Customer']['Identity'] ?? ''
         ];
+    }
+
+    public function getSubscriptionStatus($subscriptionId)
+    {
+        $queryUrl = config('services.payment_gateway.cielo.query_url');
+
+        $response = Http::withHeaders([
+            'MerchantId' => $this->merchantId,
+            'MerchantKey' => $this->merchantKey,
+            'Content-Type' => 'application/json',
+        ])->get($queryUrl . "/v2/RecurrentPayment/{$subscriptionId}");
+
+        if (!$response->successful()) {
+            return null;
+        }
+
+        $data = $response->json();
+        $recurrent = $data['RecurrentPayment'] ?? null;
+
+        if (!$recurrent) {
+            return null;
+        }
+
+        // Mapeamento para formato compatível com sincronização
+        return [
+            'id' => $recurrent['RecurrentPaymentId'],
+            'status' => $this->translateRecurrentStatus($recurrent['Status']),
+            'value' => $recurrent['Amount'] / 100,
+            'nextDueDate' => $recurrent['NextRecurrency'] ?? null,
+            'transactions' => $recurrent['RecurrentTransactions'] ?? [],
+            'customer' => $data['Customer']['Identity'] ?? ''
+        ];
+    }
+
+    private function translateRecurrentStatus($status)
+    {
+        $map = [
+            1 => 'ACTIVE',
+            2 => 'PAST_DUE',
+            3 => 'CANCELLED',
+            4 => 'EXPIRED',
+        ];
+
+        return $map[$status] ?? 'UNKNOWN';
     }
 
     private function translateStatus($status)

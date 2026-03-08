@@ -33,4 +33,9 @@ interface PaymentGatewayInterface
      * Consulta o status de um pagamento no gateway.
      */
     public function getPaymentStatus($paymentId);
+
+    /**
+     * Consulta uma recorrência/assinatura no gateway.
+     */
+    public function getSubscriptionStatus($subscriptionId);
 }

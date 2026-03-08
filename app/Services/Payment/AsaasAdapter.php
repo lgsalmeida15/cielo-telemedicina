@@ -81,4 +81,11 @@ class AsaasAdapter implements PaymentGatewayInterface
 
         return null;
     }
+
+    public function getSubscriptionStatus($subscriptionId)
+    {
+        // No Asaas, a assinatura pode ser consultada via AsaasService
+        // Implementação básica para manter a interface
+        return $this->asaasService->getSubscription($subscriptionId);
+    }
 }

@@ -40,6 +40,7 @@ class InvoiceService
                 'beneficiary_plan_id' => $beneficiaryPlan->id,
                 'beneficiary_id'      => $beneficiary->id,
                 'asaas_payment_id'    => $asaasId,
+                'gateway_recurrent_id'=> $payment['recurrent_id'] ?? null,
                 'payment_gateway'     => config('services.payment_gateway.driver', 'asaas'),
                 'competence_month'    => now()->format('m'),
                 'competence_year'     => now()->format('Y'),
