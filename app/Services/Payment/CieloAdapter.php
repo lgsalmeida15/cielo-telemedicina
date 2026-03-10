@@ -141,9 +141,12 @@ class CieloAdapter implements PaymentGatewayInterface
         }
 
         // Regra Elo 2025 (Obrigatório para Link de Pagamento/External)
+        // Removido SolutionType pois a transação é via Gateway Direto (Cielo) e não via Link de Pagamento
+        /*
         if ($brand === 'Elo') {
             $payload['Payment']['SolutionType'] = "ExternalLinkPay";
         }
+        */
 
         $response = Http::withHeaders([
             'MerchantId' => $this->merchantId,
