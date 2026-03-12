@@ -105,6 +105,7 @@ class CieloAdapter implements PaymentGatewayInterface
                 "Amount" => $amount,
                 "Installments" => 1,
                 "Capture" => true,
+                "SoftDescriptor" => "Telemedicina",
                 "RecurrentPayment" => [
                     "AuthorizeNow" => true,
                     "Interval" => "Monthly"
@@ -119,9 +120,11 @@ class CieloAdapter implements PaymentGatewayInterface
             ]
         ];
 
-        // Provedor Simulado para Sandbox Braspag
+        // Provedor Simulado para Sandbox Braspag ou Cielo30 para Produção
         if (str_contains($this->baseUrl, 'sandbox')) {
             $payload['Payment']['Provider'] = "Simulado";
+        } else {
+            $payload['Payment']['Provider'] = "Cielo30";
         }
 
         // Configurações específicas para Braspag v2 / Débito / 3DS

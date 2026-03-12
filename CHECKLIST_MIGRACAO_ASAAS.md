@@ -65,5 +65,29 @@ Este documento rastreia todos os pontos de amarração direta com o Asaas que pr
 - [x] Revisitar Arquitetura de Armazenamento de IDs Cielo:
     - [x] Criada coluna `gateway_recurrent_id` na tabela `invoices` para otimizar a performance do motor de sincronização.
     - [x] Implementado fluxo de consulta via `RecurrentPaymentId` no comando de sincronização.
-- [x] Conformidade Elo 2025: Adicionado campo `SolutionType` para transações da bandeira Elo.
+- [x] Conformidade Elo 2025: Adicionado campo `SolutionType` para transações da bandeira Elo. (Removido por ser exclusivo para Link de Pagamento, não aplicável a Gateway API).
 - [x] Validar captura de `RecurrentPaymentId` no retorno da Cielo para Débito.
+
+## 9. Configurações de Produção (Cielo 3.0)
+- [x] Adicionado campo `SoftDescriptor` com valor "Telemedicina" para identificação na fatura do cliente.
+- [x] Configurado `Provider` como "Cielo30" para transações em ambiente de produção.
+- [x] Exemplo de Payload de Recorrência implementado no `CieloAdapter`:
+```json
+{
+  "MerchantOrderId": "ORDER_...",
+  "Customer": { ... },
+  "Payment": {
+    "Type": "CreditCard",
+    "Amount": 78000,
+    "Installments": 1,
+    "Capture": true,
+    "SoftDescriptor": "Telemedicina",
+    "Provider": "Cielo30",
+    "RecurrentPayment": {
+      "AuthorizeNow": true,
+      "Interval": "Monthly"
+    },
+    "CreditCard": { ... }
+  }
+}
+```
